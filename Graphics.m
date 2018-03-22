@@ -30,6 +30,9 @@ classdef Graphics
                 else
                     error('Name must be char!')
                 end
+            else
+                [~,namestring] = fileparts(tempname);
+                obj = Graphics(namestring);
             end
         end
         
@@ -40,7 +43,8 @@ classdef Graphics
             else
                 name = obj.fileName;
             end
-            print(obj.objID,name,'-painters','-depsc','-tiff')
+            print(obj.objID,name,'-painters','-depsc','-tiff','-noui');
+            % print(f61.objID,f61.fileName,'-r300','-djpeg','-noui');
         end
         
         % Setting some properties of the graphics
@@ -53,6 +57,8 @@ classdef Graphics
                 columnsep = 0.35; % in cm
                 % textFullWidth
                 textFullWidth = paperSize(2) - 2*margin;
+                
+                warningNargin1 = 'Nothing was set! Introduce an object';
                 
                 if nargin > 1
                     % Read Columns
@@ -100,7 +106,7 @@ classdef Graphics
                     setsize(obj,1,'2:1');
                 end
             else
-                warning('Nothing was set! Introduce an object')
+                warning(warningNargin1)
             end
         end
         function setfont(obj,fontSize)
@@ -132,7 +138,7 @@ classdef Graphics
                     setfont(obj,12)
                 end
             else
-                warning('Nothing was set! Introduce an object')
+                warning(warningNargin1);
             end
         end
         function setline(obj,lineWidth)
@@ -158,6 +164,24 @@ classdef Graphics
             setsize(obj);
             setfont(obj);
             setline(obj);
+            
+            % Put a uibutton for print            
+            ButtonH = uicontrol('Parent',obj.objID,'Style','Pushbutton',...
+                'String','Print','Units','Normalized',...
+                'Position',[0.88 0.9 0.11 0.07],'Visible','on',...
+                'Callback',@pushbutton1_Callback);
+            
+%             function Pushing()
+%                 [~,RandomEnding] = fileparts(tempname);
+%                 ButtonH.Visible = 'off';
+%                 save(gcf,RandomEnding(end-11:end));
+%                 ButtonH.Visible = 'on';
+%             end            
+            function pushbutton1_Callback(hObject, eventdata, handles)
+                fprintf('Saving...\n');
+                save(obj);
+                fprintf('Saved as ''%s.eps''\n',obj.fileName);
+            end
         end
     end
 end % class
