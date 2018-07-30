@@ -103,7 +103,7 @@ classdef Graphics
                     movegui(obj.objID, 'center');
                     
                 else % Default set size: columns = 1, aspectRatio = 2:1
-                    setsize(obj,1,'2:1');
+                    setsize(obj,1,[2,1]);
                 end
             else
                 warning(warningNargin1)
@@ -182,6 +182,14 @@ classdef Graphics
                 save(obj);
                 fprintf('Saved as ''%s.eps''\n',obj.fileName);
             end
+        end
+        
+        % set all up
+        function setall(obj,columns,aspectratio,font,line)
+            setup(obj);
+            setsize(obj,columns,aspectratio);
+            setfont(obj,font);
+            setline(obj,line);
         end
     end
 end % class

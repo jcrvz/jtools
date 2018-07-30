@@ -1,125 +1,288 @@
-function [Xg,fg,details] = SSOA(fObj,bnd)
+function [bestAgent,bestFitness,details] = SSOA(ObjectiveFunction,PopInitRange)
+%
+%% Initialise parameters
+% - Simple constraints activation
+applySimpleConst    = true;
 
-% Load Statistics' Package
-%pkg load statistics
+% - Number of agents or particles
+PopulationSize      = 50;
 
-% Read parameters
-Na      = 40;
-theta   = pi/8;
-rl      = 0.75;
-M       = 1e12;
+% - Spiral dynamic's parameters
+RotationAngle       = pi/8;                 % Rotation's angle
+LowerRadius         = 0.75;                  % Random radius' lower limit
 
-Tol     = 1e-12;
-msat    = 1000;
+% - Number of Variables
+numberOfVariables   = size(PopInitRange,1);
 
-% Dimensions
-Nd      = size(bnd,1);
+% - Stopping criteria limits
+MaxIterations       = 1000*numberOfVariables;
+MaxStagIterations   = 0.8*MaxIterations;
+StepTolerance       = 1e-16;
+FunctionTolerance   = 1e-12;
+FitnessLimit        = eps;
 
-% Pre-allocate some variables
-R       = ones(Nd);
-I       = eye(Nd);
+%% Initialise the algorithm's variables and parameters
+% Adjust the boundaries of the optimisation's domain in matrix form
+LowerBound      = repmat(PopInitRange(:,1),1,PopulationSize);
+UpperBound      = repmat(PopInitRange(:,2),1,PopulationSize);
 
-% Define a quick function to obtain f(X)
-    function the_results = evaluate_function(the_function,the_positions)
-        the_results   = nan(Na,1);
-        for s = 1 : Na,
-            the_results(s) = the_function(the_positions(s,:));
+% - Determine the rotation matrix and the identity matrix
+[RotationMatrix,IdentityMatrix] = FindRotationMatrix();
+
+% - Distribute the initial population uniformly along space
+CurrentPopulation = InitialisePopulation();
+
+% Calculate the initial fitness values
+CurrentEvaluatedFunction = EvalFunction();
+
+% Found the best position to be rotation centre
+[bestFitness,bestFitnessId] = min(CurrentEvaluatedFunction);
+bestAgent = CurrentPopulation(:,bestFitnessId);
+
+% Store the previous best solution
+previousBestFitness = inf;
+previousBestAgent   = inf(size(bestAgent));
+
+% Store the previous population
+previousPopulation = CurrentPopulation;
+previousEvaluatedFunction = CurrentEvaluatedFunction;
+
+% Save the current best fitness
+historicalFitness    = nan(1,MaxIterations+1);
+historicalFitness(1) = bestFitness;
+
+% Set the iteration and stagnation counters
+Iterations = 0;
+StagIterations = 0;
+
+% Set the criteria flag as false
+criteria = false;
+
+%% Main proceduce: Stochastic Spiral Optimisation Algorithm (SSOA)
+% - Start a time counter
+timerVal = tic;
+
+% - Repeat the following process till criteria becomes true
+while ~criteria
+    
+    % Update the population's locations
+    SpiralDynamics();
+    
+    % Check if the particle is inside the search space
+    SimpleConstraints(applySimpleConst);
+    
+    % Evaluate objective function in new positions
+    CurrentEvaluatedFunction = EvalFunction();
+    
+    % Update population to preserve improvements
+    %UpdatePopulation();
+    
+    % Save the previous best fitness found
+    previousBestFitness = bestFitness;
+            
+    % Found the best position to be rotation center
+    [bestFitness,bestFitnessId] = min(CurrentEvaluatedFunction);
+    
+    % Is it better than the previous solution?
+    if bestFitness < previousBestFitness
+        bestAgent = CurrentPopulation(:,bestFitnessId);     
+    else
+        bestFitness = previousBestFitness;
+    end 
+    
+    % Update the criteria flag
+    [criteria,stoppingFlags] = UpdateCriteria();
+    
+    % Save the current best fitness
+    historicalFitness(Iterations) = bestFitness;
+    
+    % <TO-DELETE> Plot
+    %Color = exp(-Iterations/50) - 1e-3;
+    %plot(CurrentPopulation(1,:),CurrentPopulation(2,:),'.', ...
+    %    'Color',Color*[1 1 1]); hold on;
+    %plot(bestAgent(1),bestAgent(2),'*','Color',Color*[1 0 0]); %hold off;
+    %axis([0 1 0 1]); pause(0.1); 
+    %getframe(gcf);
+    % </TO-DELETE>
+    
+end
+
+% - End the time counter
+elapsedTime = toc(timerVal);
+
+% - Rescale the bestAgent to the problem's domain
+bestAgent = RescaleVariables(bestAgent);
+
+% - Store details about the performed procedure
+details = struct('elapsedTime',elapsedTime, ...
+    'functionEvaluations',Iterations*(PopulationSize + 1), ...
+    'performedIterations',Iterations, ...
+    'historicalFitness',historicalFitness(~isnan(historicalFitness)));
+
+for fn = fieldnames(stoppingFlags)'
+   details.(fn{1}) = stoppingFlags.(fn{1});
+end
+
+%% Definition of functions used by this algorithm
+
+% ------------------------------------------------------------------------
+% Function for the rotation matrix creation
+% ------------------------------------------------------------------------
+
+    function [RotationMatrix,IdentityMatrix] = FindRotationMatrix()
+        % Initialise the rotation and identity matrices
+        RotationMatrix = ones(numberOfVariables);
+        IdentityMatrix = eye(numberOfVariables);
+        
+        % Find all possible 2D planes combinations
+        posibleCombinations = combnk(1:numberOfVariables,2);
+        
+        % Create the rotation matrix
+        for ij = 1 : size(posibleCombinations,1)
+            ii           = min(posibleCombinations(ij,:));
+            jj           = max(posibleCombinations(ij,:));
+            
+            R_aux        = eye(numberOfVariables);
+            R_aux(ii,ii) = cos(RotationAngle);
+            R_aux(jj,jj) = cos(RotationAngle);
+            R_aux(ii,jj) = -sin(RotationAngle);
+            R_aux(jj,ii) = sin(RotationAngle);
+            
+            if ij == 1
+                RotationMatrix = RotationMatrix.*R_aux;
+            else
+                RotationMatrix = RotationMatrix*R_aux;
+            end
         end
     end
 
-% Make the rotation matrix
-cmbn    = combnk(1:Nd,2);   % Possible combinations by 2D plane
-for ij = 1 : size(cmbn,1),
-    i           = min(cmbn(ij,:));
-    j           = max(cmbn(ij,:));
+% ------------------------------------------------------------------------
+% Function for the initial population distribution
+% ------------------------------------------------------------------------
 
-    R_aux       = eye(Nd);
-    R_aux(i,i)  = cos(theta);
-    R_aux(j,j)  = cos(theta);
-    R_aux(i,j)  = -sin(theta);
-    R_aux(j,i)  = sin(theta);
-
-    if ij == 1, R = R.*R_aux;
-    else        R = R*R_aux; end
-end
-S = R;
-
-% Define the boundaries for each dimension
-bnd         = [min(bnd,[],2) max(bnd,[],2)];
-bnd_1       = repmat(bnd(:,1),1,Na);
-bnd_2       = repmat(bnd(:,2),1,Na);
-
-% Calculate the initial positions
-X           = bnd_1 + rand(Nd,Na).*(bnd_2 - bnd_1);
-
-% Fitness function
-getFitness  = @(x) evaluate_function(fObj,x);
-
-% Calculate the initial fitness values
-fX          = getFitness(X');
-
-% Found the best position to be rotation centre
-[fg,ig] = min(fX); Xg = X(:,ig);
-
-% Find initial value for max radii
-maxradii    = max(sum((repmat(Xg,1,Na) - X).^2,2));
-
-% Set auxiliar variables
-steps    = 1;
-msatc   = 0;
-
-% Statistical variables
-sumAVG  = 0;
-sumSD   = 0;
-%fv      = nan(M+1,1);
-fv(1)   = fg;
-
-%% Main process
-tic,
-while steps <= M && msatc < msat && maxradii > Tol
-    
-    for i = 1 : Na,
-        % Update the position for each point
-        r       = rl + (1 - rl)*rand;
-        X(:,i)  = r*S*X(:,i) - rand(Nd,1).*((r*S - I)*Xg);%
+    function [InitialPopulation] = InitialisePopulation()        
+        % Calculate the initial positions, y (in [0,1])
+        InitialPopulation = rand(numberOfVariables,PopulationSize);
     end
 
-    % Check if the particle is inside the search space
-    check = X < bnd_1; X = ~check.*X + check.*bnd_1;
-    check = X > bnd_2; X = ~check.*X + check.*bnd_2;
+% ------------------------------------------------------------------------
+% Function for rescaling the variables
+% ------------------------------------------------------------------------
 
-    % Evaluate objective function in new positions
-    fX          = getFitness(X');
+    function [RescaledVar] = RescaleVariables(Vars)
+        % Create the Synthesis equation to transform y (in [0,1]) to x 
+        %   (in [lower,upper]). Both x and y are numOfVar--times--PopSize
+        
+        % Define the boundaries for each dimension
+        %PopInitRange    = [min(PopInitRange,[],2) max(PopInitRange,[],2)];
+        
+        % Variables can be one agent or the entire population, then the
+        % function returns one vector or a matrix.
+        if size(Vars,2) == PopulationSize                     
+            RescaledVar = LowerBound + Vars.*(UpperBound - LowerBound);
+        else
+            RescaledVar = LowerBound(:,1) + ...
+                Vars.*(UpperBound(:,1) - LowerBound(:,1));
+        end
+    end
 
-    fg_ = fg;
-    % Found the best position to be rotation center
-    [fg,ig]     = min(fX);
-    if fg < fg_, Xg = X(:,ig);
-    else fg = fg_; end
+% ------------------------------------------------------------------------
+% Function for the objective function evaluation
+% ------------------------------------------------------------------------
 
-    % Statistical block
-    sumAVG      = sumAVG + fg;
-    sumSD       = sumSD + fg^2;
-    currAVG     = sumAVG/steps;
-    currSD      = sqrt(sumSD/steps - currAVG^2);
+    function EvaluatedFunction = EvalFunction()
+        % Check if it is the first evaluation
+        if exist('EvaluatedFunction','var') == false
+            EvaluatedFunction = nan(PopulationSize,1);
+        end
+        
+        % Rescale the population values to the problem's domain
+        rescaledPopulation = RescaleVariables(CurrentPopulation);
+        
+        % Evaluate each agent's position into the objective function
+        for AgentId = 1 : PopulationSize
+            EvaluatedFunction(AgentId) = ...
+                ObjectiveFunction(rescaledPopulation(:,AgentId));
+        end
+    end
 
-    % Update step
-    steps    = steps + 1;
+% ------------------------------------------------------------------------
+% Function for the objective function evaluation
+% ------------------------------------------------------------------------
 
-    fv(steps) = fg;
-    
-    % Stop criteria:
-    % 1. Stagnation
-    msatc       = (msatc + 1)*double(fg == fg_); % abs(fBest - currAVG) < currSD && 
-    % 2. Max radii population
-    maxradii    = max(sum((repmat(Xg,1,Na) - X).^2,2));
+    function SpiralDynamics()
+        randomRadii = LowerRadius + (1-LowerRadius)*rand(PopulationSize,1);
+        valsU = randn(numberOfVariables,PopulationSize);
+        for AgentId = 1 : PopulationSize
+            % Update the position for each point
+            CurrentPopulation(:,AgentId) = randomRadii(AgentId)*...
+                RotationMatrix*CurrentPopulation(:,AgentId) - ...
+                ((randomRadii(AgentId)*RotationMatrix-... % valsU(:,AgentId).*
+                IdentityMatrix)*bestAgent);
+        end
+    end
 
-end
-t = toc; Xg = Xg';
+% ------------------------------------------------------------------------
+% Function for the simple constraints verification
+% ------------------------------------------------------------------------
 
-% Final things
-if steps >= M,   outmsg = 0; else outmsg = 1; end
+    function SimpleConstraints(activation)
+        if activation == true
+            CurrentPopulation(CurrentPopulation < 0) = 0;
+            CurrentPopulation(CurrentPopulation > 1) = 1;
+        end
+    end
 
-details = struct('time',t,'fevs',steps*(Na + 1),'steps',steps,...
-    'outmsg',outmsg,'favg',currAVG,'fstd',currSD,'historical',fv);
+% ------------------------------------------------------------------------
+% Function for the update population
+% ------------------------------------------------------------------------
+
+    function UpdatePopulation()
+        % Is the population improving?
+        improvingCond = ones(numberOfVariables,1)*...
+            (CurrentEvaluatedFunction < previousEvaluatedFunction)';
+        
+        % Update the population according with its goodness 
+        CurrentPopulation(~improvingCond) = previousPopulation(~improvingCond);
+        CurrentEvaluatedFunction = min(CurrentEvaluatedFunction, ...
+            previousEvaluatedFunction);
+        
+        % Save the best values
+        previousPopulation = CurrentPopulation;
+        previousEvaluatedFunction = CurrentEvaluatedFunction;
+    end
+
+% ------------------------------------------------------------------------
+% Function for the criteria evaluation
+% ------------------------------------------------------------------------
+
+    function [criteria,stoppingFlags] = UpdateCriteria()
+        % Criterion 1: Is the iteration counter reached the maximum number?
+        Iterations     = Iterations + 1;
+        stoppingFlags.IterFlag = Iterations >= MaxIterations;
+        
+        % Criterion 2: Is the procedure stagnated?
+        % -> 2.1 Equal fitness 
+        equalFitness = (bestFitness == previousBestFitness);
+        % -> 2.2 Tiny difference between current and previous solution
+        nonZeroStepTol = 1 + (norm(previousBestAgent) < 1e-6)*norm(previousBestAgent);
+        closeSolution = (norm(previousBestAgent - bestAgent) < ... 
+                StepTolerance*nonZeroStepTol);
+        % -> 2.3 Tiny difference between current and previous fitness
+        nonZeroFuncTol = 1 + (abs(previousBestFitness) < 1e-3)*abs(previousBestFitness);
+        closeFitness = (abs(previousBestFitness - bestFitness) < ...
+                FunctionTolerance*nonZeroFuncTol);
+        if equalFitness || closeSolution || closeFitness                
+            StagIterations = StagIterations + 1;
+        end
+        stoppingFlags.StagFlag = (StagIterations >= MaxStagIterations);
+        
+        % Criterion 5: Has the best fitness reached the fitness limit?
+        stoppingFlags.FitnessLimitFlag = abs(bestFitness) < FitnessLimit;
+        
+        % Summary of criteria
+        criteria = stoppingFlags.IterFlag || stoppingFlags.StagFlag || ...
+            stoppingFlags.FitnessLimitFlag;
+    end
+
 end
