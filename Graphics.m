@@ -12,11 +12,11 @@
 % >> setup(q); % Quick setup
 % >> save(q); % Print graphic
 %
-classdef Graphics     
+classdef Graphics
     properties
         objID
         fileName
-    end 
+    end
     methods
         % Construct an object and initialise it
         function obj = Graphics(namestring)
@@ -37,7 +37,7 @@ classdef Graphics
         end
         
         % Save the graphic as an eps figure
-        function save(obj,otherName)            
+        function save(obj,otherName)
             if nargin > 1
                 name = sprintf('%s_%s',obj.fileName,otherName);
             else
@@ -123,15 +123,23 @@ classdef Graphics
                     
                     % Set fonts
                     if ~isempty(obj.objID.CurrentAxes)
-                        set(obj.objID.CurrentAxes,'FontSize',fontSize);
-                        set(obj.objID.CurrentAxes,'TickLabelInterpreter','latex');
-                        set(obj.objID.CurrentAxes.XLabel,'Interpreter','latex');
-                        set(obj.objID.CurrentAxes.YLabel,'Interpreter','latex');
-                        set(obj.objID.CurrentAxes.ZLabel,'Interpreter','latex');
-                       
-                        if ~isempty(obj.objID.CurrentAxes.Legend)
-                            set(obj.objID.CurrentAxes.Legend,'FontSize',fontSize);
-                            set(obj.objID.CurrentAxes.Legend,'Interpreter','latex');
+                        
+                        % Find all axes
+                        allAxes = findall(obj.objID,'type','axes');
+                        
+                        for ia = 1 : numel(allAxes)
+                            ax = allAxes(ia);
+                            
+                            set(ax,'FontSize',fontSize);
+                            set(ax,'TickLabelInterpreter','latex');
+                            set(ax.XLabel,'Interpreter','latex');
+                            set(ax.YLabel,'Interpreter','latex');
+                            set(ax.ZLabel,'Interpreter','latex');
+                            
+                            if ~isempty(ax.Legend)
+                                set(ax.Legend,'FontSize',fontSize);
+                                set(ax.Legend,'Interpreter','latex');
+                            end
                         end
                     end
                 else
@@ -152,7 +160,14 @@ classdef Graphics
                 end
                 
                 if ~isempty(obj.objID.Children)
-                    set(obj.objID.CurrentAxes,'LineWidth',lineWidth);
+                    
+                    % Find all axes
+                    allAxes = findall(obj.objID,'type','axes');
+                    
+                    for ia = 1 : numel(allAxes)
+                        ax = allAxes(ia);
+                        set(ax,'LineWidth',lineWidth);
+                    end
                 end
             else
                 setline(obj,1)
@@ -165,18 +180,18 @@ classdef Graphics
             setfont(obj);
             setline(obj);
             
-            % Put a uibutton for print            
+            % Put a uibutton for print
             ButtonH = uicontrol('Parent',obj.objID,'Style','Pushbutton',...
                 'String','Print','Units','Normalized',...
                 'Position',[0.88 0.9 0.11 0.07],'Visible','on',...
                 'Callback',@pushbutton1_Callback);
             
-%             function Pushing()
-%                 [~,RandomEnding] = fileparts(tempname);
-%                 ButtonH.Visible = 'off';
-%                 save(gcf,RandomEnding(end-11:end));
-%                 ButtonH.Visible = 'on';
-%             end            
+            %             function Pushing()
+            %                 [~,RandomEnding] = fileparts(tempname);
+            %                 ButtonH.Visible = 'off';
+            %                 save(gcf,RandomEnding(end-11:end));
+            %                 ButtonH.Visible = 'on';
+            %             end
             function pushbutton1_Callback(hObject, eventdata, handles)
                 fprintf('Saving...\n');
                 save(obj);
