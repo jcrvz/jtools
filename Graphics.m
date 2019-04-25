@@ -1,3 +1,4 @@
+
 % Created by Jorge M. Cruz-Duarte, feb-2018
 % Contact: jorge.cruz@ugto.mx
 %
@@ -18,7 +19,7 @@ classdef Graphics
         fileName
     end
     methods
-        % Construct an object and initialise it
+        %% Construct an object and initialise it
         function obj = Graphics(namestring)
             if nargin > 0
                 if ischar(namestring)
@@ -36,18 +37,29 @@ classdef Graphics
             end
         end
         
-        % Save the graphic as an eps figure
-        function save(obj,otherName)
-            if nargin > 1
-                name = sprintf('%s_%s',obj.fileName,otherName);
-            else
-                name = obj.fileName;
+        %% Save the graphic as an eps figure
+        function save(obj,otherName,extFile)
+            delim  = '_';
+            if nargin < 3
+                extFile = '.eps';
+                if nargin < 2
+                    otherName = '';
+                    delim = '';
+                end
             end
-            print(obj.objID,name,'-painters','-depsc','-tiff','-noui');
-            % print(f61.objID,f61.fileName,'-r300','-djpeg','-noui');
+            name = [obj.fileName,delim,otherName];
+            
+            switch extFile
+                case '.jpg'
+                    print(obj.objID,[name,extFile],'-r300','-djpeg','-noui');
+                case '.png'
+                    print(obj.objID,[name,extFile],'-r300','-dpng','-noui');
+                otherwise
+                    print(obj.objID,[name,extFile],'-painters','-depsc','-tiff','-noui');
+            end
         end
         
-        % Setting some properties of the graphics
+        %% Setting some properties of the graphics
         function setsize(obj,columns,aspectRatio)
             if nargin > 0
                 % Get paper size
@@ -94,7 +106,7 @@ classdef Graphics
                     
                     % Set figure size
                     graphicSize = lineWidth*[1,alpha]; % width, height in cm
-                    set(obj.objID,'Menubar','none');
+                    %                     set(obj.objID,'Menubar','none');
                     set(obj.objID,'PaperUnits','centimeters');
                     set(obj.objID,'PaperSize',graphicSize);
                     set(obj.objID,'PaperPosition',[0 0 graphicSize]);
@@ -109,6 +121,8 @@ classdef Graphics
                 warning(warningNargin1)
             end
         end
+        
+        %% Setting font size
         function setfont(obj,fontSize)
             if nargin > 0
                 if nargin > 1
@@ -149,6 +163,8 @@ classdef Graphics
                 warning(warningNargin1);
             end
         end
+        
+        %% Set line
         function setline(obj,lineWidth)
             
             if nargin > 1
@@ -174,17 +190,112 @@ classdef Graphics
             end
         end
         
-        % quick setup
+        %% quick setup
         function setup(obj)
             setsize(obj);
             setfont(obj);
             setline(obj);
             
+            TextEPS = [
+                1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0
+                1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+                1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+                1 1 1 1 1 0 0 1 1 1 1 1 0 0 0 0
+                1 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0
+                1 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0
+                1 1 1 1 1 0 0 1 1 1 1 1 0 0 0 0
+                0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0
+                0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0
+                0 0 0 1 0 0 0 1 0 0 1 1 1 1 1 1
+                0 0 0 1 0 0 0 1 0 0 1 0 0 0 0 0
+                0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0
+                1 0 0 1 0 0 1 0 0 0 1 1 1 1 1 1
+                0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 1
+                0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 1
+                1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1
+                ];
+            TextEPS(TextEPS == 0) = nan;
+            
+            TextPNG = [
+                1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0
+                1 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0
+                1 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0
+                1 1 1 1 1 0 1 0 0 0 0 0 0 0 0 0
+                1 0 0 0 0 0 1 1 0 0 0 1 0 0 0 0
+                1 0 0 0 0 0 1 0 1 0 0 1 0 0 0 0
+                1 0 0 0 0 0 1 0 0 1 0 1 0 0 0 0
+                1 0 0 0 0 0 1 0 0 0 1 1 0 0 0 0
+                0 0 0 0 0 0 1 0 0 0 0 1 0 0 0 0
+                0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+                0 0 0 1 0 0 0 0 0 0 1 1 1 1 1 1
+                0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0
+                1 0 0 1 0 0 1 0 0 0 1 0 0 0 0 0
+                0 1 0 1 0 1 0 0 0 0 1 0 0 1 1 1
+                0 0 1 1 1 0 0 0 0 0 1 0 0 0 0 1
+                1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1
+                ];
+            TextPNG(TextPNG == 0) = nan;
+            
+            TextJPG = [
+                0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+                0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+                0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+                0 0 0 1 0 0 1 1 1 1 1 0 0 0 0 0
+                0 0 0 1 0 0 1 0 0 0 1 0 0 0 0 0
+                0 0 0 1 0 0 1 0 0 0 1 0 0 0 0 0
+                1 1 1 1 0 0 1 1 1 1 1 0 0 0 0 0
+                0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0
+                0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0
+                0 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+                0 0 0 1 0 0 0 0 0 0 1 1 1 1 1 1
+                0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0
+                1 0 0 1 0 0 1 0 0 0 1 0 0 0 0 0
+                0 1 0 1 0 1 0 0 0 0 1 0 0 1 1 1
+                0 0 1 1 1 0 0 0 0 0 1 0 0 0 0 1
+                1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1
+                ];
+            TextJPG(TextJPG == 0) = nan;
+            
+            CDataEPS = nan(16,16,3);
+            CDataEPS(:,:,1) = TextEPS;
+            
+            CDataPNG = nan(16,16,3);
+            CDataPNG(:,:,1) = TextPNG;
+            CDataPNG(:,:,3) = TextPNG;
+            
+            CDataJPG = nan(16,16,3);
+            CDataJPG(:,:,1) = 0.2*TextJPG;
+            CDataJPG(:,:,3) = TextJPG;
+            
             % Put a uibutton for print
-            ButtonH = uicontrol('Parent',obj.objID,'Style','Pushbutton',...
-                'String','Print','Units','Normalized',...
-                'Position',[0.88 0.9 0.11 0.07],'Visible','on',...
-                'Callback',@pushbutton1_Callback);
+            if isempty(findall(obj.objID,'Tag','.eps'))
+                uipushtool(findall(obj.objID,'Type','uitoolbar'),...
+                    'CData',CDataEPS,...
+                    'TooltipString','Save to EPS', 'Tag', '.eps', ...
+                    'Separator','on','HandleVisibility','off',...
+                    'ClickedCallback',@pushbutton1_Callback);
+            end
+            
+            if isempty(findall(obj.objID,'Tag','.png'))
+                uipushtool(findall(obj.objID,'Type','uitoolbar'),...
+                    'CData',CDataPNG,...
+                    'TooltipString','Save to PNG', 'Tag', '.png', ...
+                    'Separator','on','HandleVisibility','off',...
+                    'ClickedCallback',@pushbutton1_Callback);
+            end
+            
+            if isempty(findall(obj.objID,'Tag','.jpg'))
+                uipushtool(findall(obj.objID,'Type','uitoolbar'),...
+                    'CData',CDataJPG,...
+                    'TooltipString','Save to JPG', 'Tag', '.jpg', ...
+                    'Separator','on','HandleVisibility','off',...
+                    'ClickedCallback',@pushbutton1_Callback);
+            end
+            
+            %             ButtonH = uicontrol('Parent',obj.objID,'Style','Pushbutton',...
+            %                 'String','Print','Units','Normalized',...
+            %                 'Position',[0.88 0.9 0.11 0.07],'Visible','on',...
+            %                 'Callback',@pushbutton1_Callback);
             
             %             function Pushing()
             %                 [~,RandomEnding] = fileparts(tempname);
@@ -194,8 +305,9 @@ classdef Graphics
             %             end
             function pushbutton1_Callback(hObject, eventdata, handles)
                 fprintf('Saving...\n');
-                save(obj);
-                fprintf('Saved as ''%s.eps''\n',obj.fileName);
+                % hObject.Tag = .eps | .jpg | .png
+                save(obj,'',hObject.Tag);
+                fprintf('Saved as ''%s%s''\n',obj.fileName,hObject.Tag);
             end
         end
         
