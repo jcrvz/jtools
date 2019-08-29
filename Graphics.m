@@ -47,13 +47,17 @@ classdef Graphics
                     delim = '';
                 end
             end
-            name = [obj.fileName,delim,otherName];
+            if strcmp(otherName,'')
+               name = obj.fileName;
+            else
+                name = [obj.fileName,delim,otherName];
+            end
             
             switch extFile
                 case '.jpg'
-                    print(obj.objID,[name,extFile],'-r300','-djpeg','-noui');
+                    print(obj.objID,[name,extFile],'-r333','-djpeg','-noui');
                 case '.png'
-                    print(obj.objID,[name,extFile],'-r300','-dpng','-noui');
+                    print(obj.objID,[name,extFile],'-r333','-dpng','-noui');
                 otherwise
                     print(obj.objID,[name,extFile],'-painters','-depsc','-tiff','-noui');
             end
