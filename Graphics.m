@@ -37,6 +37,15 @@ classdef Graphics
             end
         end
         
+        %% Destroy an object
+        function kill(obj)
+            if nargin > 0
+                close(obj.objID);
+            else
+                error('An object is needed!!!');
+            end
+        end        
+        
         %% Save the graphic as an eps figure
         function save(obj,otherName,extFile)
             delim  = '_';
@@ -78,7 +87,7 @@ classdef Graphics
                 
                 if nargin > 1
                     % Read Columns
-                    if columns > 1 && mod(columns,1) == 0
+                    if columns > 1 %&& mod(columns,1) == 0
                         lineWidth = textFullWidth/columns - columnsep/2;
                     else
                         lineWidth = textFullWidth;
